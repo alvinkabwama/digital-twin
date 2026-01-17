@@ -60,6 +60,32 @@ Contents
 - IAM:
   - Terraform attaches `AWSLambdaBasicExecutionRole`, `AmazonBedrockFullAccess`, and `AmazonS3FullAccess` to the Lambda role to allow Bedrock and S3 access. For production, restrict to least privilege.
 
+## CI / GitHub Actions
+- The repository includes GitHub Actions workflows for deployment and destruction:
+  - `.github/workflows/deploy.yml` — triggered on push to `main` or manually via workflow_dispatch. It:
+    - Checks out the repo, configures AWS credentials (assumes a role), sets up Python/Node/Terraform, and runs `scripts/deploy.sh`.
+    - Requires GitHub secrets: `AWS_ROLE_ARN`, `AWS_ACCOUNT_ID`, and `DEFAULT_AWS_REGION`.
+    - After deploy it outputs CloudFront and API Gateway URLs and invalidates CloudFront to refresh the frontend.
+  - `.github/workflows/destroy.yml` — manual workflow to run `scripts/destroy.sh` for an environment (requires confirmation input).
+    - Also requires `AWS_ROLE_ARN`, `AWS_ACCOUNT_ID`, and `DEFAULT_AWS_REGION`.
+
+Example: key parts of the deploy workflow
+```10:21:.github/workflows/deploy.yml
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: github-actions-deploy
+          aws-region: ${{ secrets.DEFAULT_AWS_REGION }}
+
+      - name: Run Deployment Script
+        run: |
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh ${{ github.event.inputs.environment || 'dev' }}
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+```
+
 ## Environment variables
 - Backend (via `.env` or Lambda environment variables):
   - `CORS_ORIGINS` — CSV of allowed origins (default: `http://localhost:3000`)
@@ -109,7 +135,7 @@ The backend implementation lives at `backend/server.py`. Key endpoints:
     - `messages`: array of `{ role, content, timestamp }`
 
 Code references (examples in repo):
-```text
+
 ```165:172:backend/server.py
 @app.get("/")
 async def root():
@@ -119,7 +145,6 @@ async def root():
         "storage": "S3" if USE_S3 else "local",
         "ai_model": BEDROCK_MODEL_ID
     }
-```
 ```
 
 ## Frontend usage
@@ -132,9 +157,8 @@ async def root():
   - Lambda function: uses `backend/lambda-deployment.zip`
   - API Gateway HTTP API: routes mapped to Lambda for `GET /`, `GET /health`, `POST /chat`, `GET /conversation/{session_id}`
   - CloudFront distribution and optional custom domain configuration with ACM + Route53
+Snippet (Lambda config):
 
-Snippet:
-```text
 ```122:141:terraform/main.tf
 resource "aws_lambda_function" "api" {
   filename         = "${path.module}/../backend/lambda-deployment.zip"
@@ -153,7 +177,6 @@ resource "aws_lambda_function" "api" {
   }
 }
 ```
-```
 
 ## Key files
 - Backend:
@@ -167,7 +190,7 @@ resource "aws_lambda_function" "api" {
   - `frontend/package.json` — dev/build scripts and dependencies.
 - Infra:
   - `terraform/main.tf` — core infra resources.
-  - `scripts/` — `deploy.ps1` and `destroy.ps1`.
+  - `scripts/` — `deploy.sh`, `destroy.sh`, `deploy.ps1`, and `destroy.ps1`.
 
 ## Security & permissions
 - Terraform currently grants broad Bedrock and S3 permissions to the Lambda role. Narrow policies to least privilege for production.
@@ -190,15 +213,4 @@ resource "aws_lambda_function" "api" {
   }
 }
 ```
-
-## Recommended next steps
-- Add a `Makefile` or `package.json` script to build `backend/lambda-deployment.zip`.
-- Harden IAM policies to least privilege (Bedrock and S3).
-- Add automated tests for the API endpoints and frontend UI.
-
----
-
-If you'd like, I can:
-- Create a packaging script to build `backend/lambda-deployment.zip`.
-- Add a short Quickstart section with commands to run the full stack locally.
 
