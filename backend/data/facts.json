@@ -1,0 +1,29 @@
+{
+    "full_name": "Kabwama Leonald Alvin",
+    "name": "Alvin",
+    "current_role": "Machine Learning & Technical Support Engineer",
+    "location": "Iowa, United States",
+    "email": "",
+    "linkedin": "",
+    "specialties": [
+      "Machine Learning Engineering",
+      "Backend Systems & APIs",
+      "MLOps and Model Deployment",
+      "Retrieval-Augmented Generation (RAG)",
+      "Production AI Systems"
+    ],
+    "years_experience": 7,
+    "education": [
+      {
+        "degree": "Bachelors' Degree in Electrical Engineering",
+        "institution": "University in Uganda",
+        "year": "2016"
+      },
+      {
+        "degree": "Master of Science in Computer Science",
+        "institution": "Maharishi International University",
+        "year": "2024"
+      }
+    ]
+  }
+  
